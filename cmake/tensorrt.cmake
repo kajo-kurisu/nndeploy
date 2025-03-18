@@ -2,7 +2,13 @@
 include(ExternalProject)
 
 # TensorRT头文件路径
-set(TENSORRT_INCLUDE_DIR_USER "/usr/include" CACHE PATH "Path to TensorRT include directory")
+#set(TENSORRT_INCLUDE_DIR_USER "/usr/include" CACHE PATH "Path to TensorRT include directory")
+set(TensorRT_DIR "/home/sy/my_lib/TensorRT-8.6.1.6_cu11")
+set(TENSORRT_INCLUDE_DIR_USER "/home/sy/my_lib/TensorRT-8.6.1.6_cu11/include" CACHE PATH "Path to TensorRT include directory")
+
+#find_package(TensorRT REQUIRED)
+include_directories(${TensorRT_DIR}/include)
+link_directories(${TensorRT_DIR}/lib)
 
 if (ENABLE_NNDEPLOY_INFERENCE_TENSORRT STREQUAL "OFF")
 elseif (ENABLE_NNDEPLOY_INFERENCE_TENSORRT STREQUAL "ON")
@@ -10,7 +16,10 @@ elseif (ENABLE_NNDEPLOY_INFERENCE_TENSORRT STREQUAL "ON")
     TENSORRT_INCLUDE_DIR NvInfer.h
     HINTS ${TENSORRT_INCLUDE_DIR_USER} ${CUDA_TOOLKIT_ROOT_DIR})
   message(STATUS "Found TensorRT headers at ${TENSORRT_INCLUDE_DIR}")
+  
   include_directories(${TENSORRT_INCLUDE_DIR})
+  
+  
   set(NNDEPLOY_THIRD_PARTY_LIBRARY ${NNDEPLOY_THIRD_PARTY_LIBRARY} libnvinfer.so)
   set(NNDEPLOY_THIRD_PARTY_LIBRARY ${NNDEPLOY_THIRD_PARTY_LIBRARY} libnvinfer_plugin.so)
   set(NNDEPLOY_THIRD_PARTY_LIBRARY ${NNDEPLOY_THIRD_PARTY_LIBRARY} libnvparsers.so)
