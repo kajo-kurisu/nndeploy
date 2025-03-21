@@ -12,15 +12,25 @@
 #include "nndeploy/base/string.h"
 #include "nndeploy/net/util.h"
 
+/*
+* 内存复用
+* 1. 5种算法的实现
+* 2. 生命周期的优化
+* 3. 多模型共享内存的优化
+* 4. workspace的优化
+* 5. inplace算子的优化（TODO）
+* 6. 更精细的内存优化（基于多生命周期的优化）（TODO）
+*/
+
 namespace nndeploy {
 namespace net {
 
 enum TensorPoolType : int {
-  kTensorPool1DSharedObjectTypeGreedyByBreadth,      // 不正确
+  kTensorPool1DSharedObjectTypeGreedyByBreadth,      // 正确
   kTensorPool1DSharedObjectTypeGreedyBySize,         // 正确
   kTensorPool1DSharedObjectTypeGreedyBySizeImprove,  // 正确
   kTensorPool1DOffsetCalculateTypeGreedyBySize,      // 正确
-  kTensorPool1DOffsetCalculateTypeGreedyByBreadth,   // 不正确
+  kTensorPool1DOffsetCalculateTypeGreedyByBreadth,   // 正确
   kTensorPool1DNone,
 };
 
@@ -51,12 +61,20 @@ struct Chunk {
   std::vector<std::array<int, 2>> intervals_;
 };
 
+struct Offset {
+  int offset_;
+  size_t size_;
+  std::vector<std::shared_ptr<TensorUsageRecord>> tensor_usage_records_;
+};
+
 class TensorPool {
  public:
   TensorPool(device::Device *device,
              std::vector<TensorWrapper *> &tensor_repository,
              std::vector<OpWrapper *> &op_repository);
   virtual ~TensorPool();
+
+  void setAllocateInputOutputTensor(bool allocate_input_output_tensor);
 
   virtual base::Status allocate() = 0;
   virtual base::Status deallocate() = 0;
@@ -78,6 +96,7 @@ class TensorPool {
  protected:
   device::Device *device_;
   base::IntVector config_ = base::IntVector();
+  bool allocate_input_output_tensor_ = true;
   std::vector<TensorWrapper *> tensor_repository_;
   std::vector<OpWrapper *> op_repository_;
 };
