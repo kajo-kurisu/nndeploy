@@ -19,14 +19,11 @@
 namespace nndeploy {
 namespace net {
 
-class PipelineTensor {
- public:
-  PipelineTensor() {};
-  virtual ~PipelineTensor() {};
-  TensorWrapper *tensor_;
-  std::vector<device::Tensor *> tensors_;
-  std::vector<SequentialRuntime *> producers_;
-  std::vector<SequentialRuntime *> consumers_;
+struct PipelineRuntimeStage {
+  std::vector<OpWrapper *> op_wrappers_;
+  std::vector<TensorWrapper *> tensor_wrappers_;
+  std::vector<device::Tensor *> input_tensors_;
+  std::vector<device::Tensor *> output_tensors_;
 };
 
 class PipelineRuntime : public Runtime {
@@ -35,11 +32,15 @@ class PipelineRuntime : public Runtime {
   virtual ~PipelineRuntime();
 
   // 设置流水线并行数量
-  base::Status setWorkers(int num, std::vector<base::DeviceType> device_types =
-                                       std::vector<base::DeviceType>());
+  base::Status setWorkers(int worker_num,
+                          std::vector<base::DeviceType> device_types =
+                              std::vector<base::DeviceType>());
+
   virtual base::Status init(
       std::vector<TensorWrapper *> &tensor_repository,
-      std::vector<OpWrapper *> &op_repository, bool is_dynamic_shape,
+      std::vector<OpWrapper *> &op_repository,
+      std::vector<device::Tensor *> &input_tensors,
+      std::vector<device::Tensor *> &output_tensors, bool is_dynamic_shape,
       base::ShapeMap max_shape,
       TensorPoolType tensor_pool_type =
           kTensorPool1DSharedObjectTypeGreedyBySizeImprove);
@@ -52,14 +53,27 @@ class PipelineRuntime : public Runtime {
   virtual base::Status postRun();
 
   void commitThreadPool();
-  base::EdgeUpdateFlag updateInput();
+
+  virtual base::Status copyToInputTensor(device::Tensor *tensor);
+  virtual device::Tensor *getOutputTensorAfterRun(const std::string &name,
+                                                  base::DeviceType device_type,
+                                                  bool is_copy,
+                                                  base::DataFormat data_format);
 
  private:
-  int pipeline_parallel_num_ = 1;
-  std::vector<base::DeviceType> device_types_;
   std::vector<SequentialRuntime *> sequential_runtimes_;
-  std::map<TensorWrapper *, PipelineTensor *> input_output_tensors_;
+  std::map<SequentialRuntime *, std::shared_ptr<PipelineRuntimeStage>>
+      sequential_runtime_stage_stages_;
+
+  std::map<device::Tensor *, PipelineTensor *> input_output_tensors_;
+
   thread_pool::ThreadPool *thread_pool_ = nullptr;
+
+  // 添加互斥锁和条件变量，用于同步流水线状态
+  std::mutex pipeline_mutex_;
+  std::condition_variable pipeline_cv_;
+  int run_size_ = 0;
+  int completed_size_ = 0;
 };
 
 }  // namespace net

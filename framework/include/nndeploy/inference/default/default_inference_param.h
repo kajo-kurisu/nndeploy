@@ -28,6 +28,7 @@ class DefaultInferenceParam : public InferenceParam {
   ir::ModelDesc *model_desc_ = nullptr;
   net::TensorPoolType tensor_pool_type_ =
       net::kTensorPool1DSharedObjectTypeGreedyBySizeImprove;
+  std::vector<base::DeviceType> device_types_;
 };
 
 }  // namespace inference
